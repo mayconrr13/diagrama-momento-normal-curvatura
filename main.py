@@ -4,10 +4,12 @@ import math
 # Units: kN and cm
 
 # Normal, teta and variation
-normalForce = 1000
+initialNormalForce = 1000
+normalForceVariation = 50
+normalForceLimit = 1100
 teta = 0.1
-maximumError = 10 ** -8
-numberOfDivisions = 20
+maximumError = 10 ** -6
+numberOfDivisions = 10
 
 # Section details
 sectionWidth = 40
@@ -39,19 +41,24 @@ reinforcementsBars = [
 reinforcementYieldStress = 50
 reinforcementReducerFactor = 1.15
 
-def getConcreteTrackStress(strain, concreteCompressiveStrength):
+def getConcreteTrackStress(strain, concreteCompressiveStrength, limitStress):
+    coefficients = {
+        "85": 0.85,
+        "110": 1.1,
+    }
+
     if(strain <= 0):
        trackStress = 0
 
     elif(strain < 0.002):
-        trackStress = 0.85 * (concreteCompressiveStrength / 1.4) * (1 - (1 - strain / 0.002) ** 2)
+        trackStress = coefficients[limitStress] * (concreteCompressiveStrength / 1.4) * (1 - (1 - strain / 0.002) ** 2)
 
     else:
-        trackStress = 0.85 * (concreteCompressiveStrength / 1.4)
+        trackStress = coefficients[limitStress] * (concreteCompressiveStrength / 1.4)
     
     return trackStress
 
-def getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, initialStrain, radiusOfCurvature, concreteCompressiveStrength):
+def getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, initialStrain, radiusOfCurvature, concreteCompressiveStrength, limitStress):
     concreteTracksWidth = sectionDepth / numberOfDivisions
 
     trackProperties = [] # [centerPosition, trackResultantForce]
@@ -59,7 +66,7 @@ def getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, in
     for i in range(numberOfDivisions):
         centerPosition = concreteTracksWidth * (i) + concreteTracksWidth / 2
         trackStrain = initialStrain - radiusOfCurvature * centerPosition
-        trackStress = getConcreteTrackStress(trackStrain, concreteCompressiveStrength)
+        trackStress = getConcreteTrackStress(trackStrain, concreteCompressiveStrength, limitStress)
         trackResultantForce = trackStress * (concreteTracksWidth * sectionWidth)
 
         trackProperties.append([centerPosition, trackResultantForce])
@@ -92,7 +99,7 @@ def getBarProperties(initialStrain, radiusOfCurvature, reinforcementYieldStress,
     for i in range(len(reinforcementsBarsList)):
         barPosition = reinforcementsBarsList[i][1]
         barStrain = initialStrain - radiusOfCurvature * barPosition[1]
-        # print(barStrain)
+        
         barStress = getBarStress(barStrain, reinforcementYieldStress)
         barResultantForce = barStress * (math.pi * 0.25 * (reinforcementsBarsList[i][0] / 10) ** 2)
 
@@ -109,11 +116,11 @@ def getSteelResultantForce(reinforcementsBarsList):
     return resultantForce
 
 def updateStrain(strain, previousError, normalForce):
-    updatedStrain = strain * (1 + 0.5 * (- previousError / normalForce))
-
+    updatedStrain = abs(strain * (1 - 0.5 * previousError / normalForce))
+    
     return updatedStrain
 
-def resolver(normalForce, maximumError, strain, radiusOfCurvature):
+def resolver(normalForce, maximumError, strain, radiusOfCurvature, limitStress):
     barResultant = 0
     concreteResultant = 0
 
@@ -122,14 +129,17 @@ def resolver(normalForce, maximumError, strain, radiusOfCurvature):
     strain = strain
 
     while (abs(error) > maximumError):
-        trackProperties = getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, strain, radiusOfCurvature, concreteCompressiveStrength)
+        trackProperties = getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, strain, radiusOfCurvature, concreteCompressiveStrength, limitStress)
         concreteResultant = getConcreteResultantForce(trackProperties)
 
         barProperties = getBarProperties(strain, radiusOfCurvature, reinforcementYieldStress, reinforcementsBars)
         barResultant = getSteelResultantForce(barProperties)
 
         error = (barResultant + concreteResultant) - normalForce
-        strain = updateStrain(strain, error, normalForce)     
+        strain = updateStrain(strain, error, normalForce)  
+
+        if(strain > 0.0035):
+            break   
 
     return trackProperties, barProperties, strain
 
@@ -163,7 +173,7 @@ def getResultantMoment(trackProperties, barProperties, sectionDepth):
 
     return resultantMoment
 
-def interactiveProcess(normalForce, maximumError, sectionDepth, teta, initialStrain):
+def interactiveProcess(normalForce, maximumError, sectionDepth, teta, initialStrain, limitStress):
     processResults = []
 
     check = initialStrain
@@ -171,7 +181,7 @@ def interactiveProcess(normalForce, maximumError, sectionDepth, teta, initialStr
     radiusOfCurvature = teta / (1000 * effectiveDepth)
 
     while (check < 0.0035):
-        trackProperties, barProperties, strain = resolver(normalForce, maximumError, check, radiusOfCurvature)
+        trackProperties, barProperties, strain = resolver(normalForce, maximumError, check, radiusOfCurvature, limitStress)
         check = strain
 
         resultantMoment = getResultantMoment(trackProperties, barProperties, sectionDepth)
@@ -180,10 +190,25 @@ def interactiveProcess(normalForce, maximumError, sectionDepth, teta, initialStr
         teta += 0.1
         radiusOfCurvature = teta / (1000 * effectiveDepth)
 
-    else:
-        print("Processo encerrado para esse nível de força normal.")
-
     return processResults
 
-results = interactiveProcess(normalForce, maximumError, sectionDepth, teta, 0.002)
-print(results)
+def createResultFile(limitStress, results):
+    file = open('N' + str(results[0][0]) + '_' + limitStress + '.txt', "a")
+
+    file.write('Normal Force: ' + str(results[0][0]) + '\n')
+    file.write('Concrete stress: ' + str(limitStress) + '\n\n')
+    file.write('θ, Mrd\n' )
+
+    for j in range(len(results)):
+        file.write('%.1f' % results[j][1] + ', ' + str(results[j][2]) + '\n')
+
+    file.close()
+
+limitStress = ['85', '110']
+
+for i in range(len(limitStress)):
+    results = interactiveProcess(initialNormalForce, 10 ** -8, sectionDepth, 0.1, 0.002, limitStress[i])
+
+    createResultFile(limitStress[i], results)
+
+print("Processo finalizado!")

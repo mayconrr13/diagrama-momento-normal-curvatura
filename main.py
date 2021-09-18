@@ -4,12 +4,12 @@ import math
 # Units: kN and cm
 
 # Normal, teta and variation
-normalForceInitial = 900
-normalForceVariation = 50
-normalForceLimit = 1100
+normalForceInitial = 300
+normalForceVariation = 25
+normalForceLimit = 1000
 teta = 0.1
-maximumError = 10 ** -6
-numberOfDivisions = 10
+maximumError = 10 ** -8
+numberOfDivisions = 50
 
 # Section details
 sectionWidth = 40
@@ -19,7 +19,6 @@ effectiveDepth = sectionDepth - reinforcementCenterPosition
 
 # Materials details
 concreteCompressiveStrength = 3
-concreteReducerFactor = 1.4
 
 # relative postion based on the heights point on the section at left. width (X) and depth(Y)
 reinforcementBar0 = [16, [4, 4]]    #diameter, position[x, y]
@@ -39,7 +38,6 @@ reinforcementsBars = [
 ]
 
 reinforcementYieldStress = 50
-reinforcementReducerFactor = 1.15
 
 def getConcreteTrackStress(strain, concreteCompressiveStrength, limitStress):
     coefficients = {
@@ -115,9 +113,21 @@ def getSteelResultantForce(reinforcementsBarsList):
 
     return resultantForce
 
+def getCorrectionFactor(normalForce):
+    if(normalForce < 300):
+        return 0.01
+    if(normalForce >= 300 and normalForce < 600):
+        return 0.1
+    elif(normalForce >= 600 and normalForce < 800):
+        return 0.2
+    else:
+        return 0.5
+
 def updateStrain(strain, previousError, normalForce):
-    updatedStrain = abs(strain * (1 - 0.5 * previousError / normalForce))
-    
+    correctionFactor = getCorrectionFactor(normalForce)
+
+    updatedStrain = strain * (1 + correctionFactor * previousError / normalForce)
+
     return updatedStrain
 
 def resolver(normalForce, maximumError, strain, radiusOfCurvature, limitStress):
@@ -127,6 +137,7 @@ def resolver(normalForce, maximumError, strain, radiusOfCurvature, limitStress):
     error = 1
     radiusOfCurvature = radiusOfCurvature
     strain = strain
+    numberOfIterations = 0    
 
     while (abs(error) > maximumError):
         trackProperties = getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, strain, radiusOfCurvature, concreteCompressiveStrength, limitStress)
@@ -135,10 +146,11 @@ def resolver(normalForce, maximumError, strain, radiusOfCurvature, limitStress):
         barProperties = getBarProperties(strain, radiusOfCurvature, reinforcementYieldStress, reinforcementsBars)
         barResultant = getSteelResultantForce(barProperties)
 
-        error = (barResultant + concreteResultant) - normalForce
+        error = normalForce - (barResultant + concreteResultant) 
         strain = updateStrain(strain, error, normalForce)  
+        numberOfIterations += 1
 
-        if(strain > 0.0035):
+        if(strain > 0.0035 or numberOfIterations > 1000):
             break   
 
     return trackProperties, barProperties, strain
@@ -209,13 +221,13 @@ def getResultsPerNormalForceLevel(normalForceInitial, sectionDepth):
     normalForce = normalForceInitial
 
     for i in range(len(limitStress)):
-        results = interactiveProcess(normalForce, 10 ** -8, sectionDepth, 0.1, 0.002, limitStress[i])
+        results = interactiveProcess(normalForce, 10 ** -6, sectionDepth, 0.1, 0.002, limitStress[i])
 
         createResultFile(limitStress[i], results)
 
     print("Processo finalizado para força normal " + str(normalForce) + "!")
 
-def processNormalForceRange(normalForceInitial, normalForceVariation):
+def processNormalForceRange(normalForceInitial, normalForceVariation, normalForceLimit):
     normalForce = normalForceInitial
 
     while (normalForce <= normalForceLimit):
@@ -225,4 +237,4 @@ def processNormalForceRange(normalForceInitial, normalForceVariation):
     print("--- END ---")
     return
 
-processNormalForceRange(normalForceInitial, normalForceVariation)
+processNormalForceRange(normalForceInitial, normalForceVariation, normalForceLimit)

@@ -94,7 +94,7 @@ def processNormalForceRange(
         numberOfDivisions,
         reinforcementBars
     ):
-    print(normalForceInitial, normalForceVariation)
+    
     normalForce = normalForceInitial
 
     while (normalForce <= normalForceLimit):

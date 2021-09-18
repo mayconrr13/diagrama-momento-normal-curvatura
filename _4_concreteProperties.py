@@ -23,6 +23,7 @@ def getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, in
     for i in range(numberOfDivisions):
         centerPosition = concreteTracksWidth * (i) + concreteTracksWidth / 2
         trackStrain = initialStrain - radiusOfCurvature * centerPosition
+
         trackStress = getConcreteTrackStress(trackStrain, concreteCompressiveStrength, limitStress)
         trackResultantForce = trackStress * (concreteTracksWidth * sectionWidth)
 

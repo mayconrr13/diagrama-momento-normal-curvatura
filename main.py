@@ -4,7 +4,7 @@ import math
 # Units: kN and cm
 
 # Normal, teta and variation
-initialNormalForce = 1000
+normalForceInitial = 900
 normalForceVariation = 50
 normalForceLimit = 1100
 teta = 0.1
@@ -204,11 +204,25 @@ def createResultFile(limitStress, results):
 
     file.close()
 
-limitStress = ['85', '110']
+def getResultsPerNormalForceLevel(normalForceInitial, sectionDepth):
+    limitStress = ['85', '110']
+    normalForce = normalForceInitial
 
-for i in range(len(limitStress)):
-    results = interactiveProcess(initialNormalForce, 10 ** -8, sectionDepth, 0.1, 0.002, limitStress[i])
+    for i in range(len(limitStress)):
+        results = interactiveProcess(normalForce, 10 ** -8, sectionDepth, 0.1, 0.002, limitStress[i])
 
-    createResultFile(limitStress[i], results)
+        createResultFile(limitStress[i], results)
 
-print("Processo finalizado!")
+    print("Processo finalizado para força normal " + str(normalForce) + "!")
+
+def processNormalForceRange(normalForceInitial, normalForceVariation):
+    normalForce = normalForceInitial
+
+    while (normalForce <= normalForceLimit):
+        getResultsPerNormalForceLevel(normalForce, sectionDepth)
+        normalForce += normalForceVariation
+
+    print("--- END ---")
+    return
+
+processNormalForceRange(normalForceInitial, normalForceVariation)

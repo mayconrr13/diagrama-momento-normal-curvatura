@@ -2,6 +2,11 @@ from _6_resultantMoment import getResultantMoment
 from _7_createResultFile import createResultFile
 from _3_normalStrainIteractiveProcess import resolver
 
+def getThirdCondition(strain, sectionDepth, radiusOfCurvature): 
+    condition = strain - radiusOfCurvature * sectionDepth * 0.42867
+
+    return condition
+
 def interactiveProcess(
     normalForce, 
     maximumError, 
@@ -43,8 +48,14 @@ def interactiveProcess(
         resultantMoment = getResultantMoment(trackProperties, barProperties, sectionDepth)
 
         processResults.append([normalForce, teta, resultantMoment])
+
+        condition = getThirdCondition(strain, sectionDepth, radiusOfCurvature)
+        if(condition >= 0.002):
+            break
+        
         teta += 0.1
         radiusOfCurvature = teta / (1000 * effectiveDepth)
+
 
     return processResults
 

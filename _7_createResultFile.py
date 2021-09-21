@@ -6,6 +6,6 @@ def createResultFile(limitStress, results):
     file.write('θ, Mrd\n' )
 
     for j in range(len(results)):
-        file.write('%.1f' % results[j][1] + ', ' + str(results[j][2]) + '\n')
+        file.write('%.1f' % results[j][1] + ', ' + '%.6f' % results[j][2] + '\n')
 
     file.close()

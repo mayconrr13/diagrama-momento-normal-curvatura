@@ -45,11 +45,12 @@ def resolver(
         barProperties = getBarProperties(strain, radiusOfCurvature, reinforcementYieldStress, reinforcementBars)
         barResultant = getSteelResultantForce(barProperties)
 
-        error = normalForce - (barResultant + concreteResultant) 
-        strain = updateStrain(strain, error, normalForce)  
-        numberOfIterations += 1
 
-        if(strain > 0.0035 or numberOfIterations > 1000):
+        error = normalForce - (barResultant + concreteResultant) 
+        strain = updateStrain(strain, error, normalForce)       
+        numberOfIterations += 1
+        
+        if(strain >= 0.0035 or numberOfIterations >= 1000):
             break   
 
     return trackProperties, barProperties, strain

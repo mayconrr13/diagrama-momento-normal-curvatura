@@ -38,19 +38,15 @@ def resolver(
     strain = strain
     numberOfIterations = 0    
 
-    while (abs(error) > maximumError):
+    while (abs(error) > maximumError) and (numberOfIterations <= 1000):
         trackProperties = getConcreteTrackProperties(sectionWidth, sectionDepth, numberOfDivisions, strain, radiusOfCurvature, concreteCompressiveStrength, limitStress)
         concreteResultant = getConcreteResultantForce(trackProperties)
 
         barProperties = getBarProperties(strain, radiusOfCurvature, reinforcementYieldStress, reinforcementBars)
         barResultant = getSteelResultantForce(barProperties)
 
-
         error = normalForce - (barResultant + concreteResultant) 
         strain = updateStrain(strain, error, normalForce)       
-        numberOfIterations += 1
-        
-        if(strain >= 0.0035 or numberOfIterations >= 1000):
-            break   
+        numberOfIterations += 1       
 
     return trackProperties, barProperties, strain

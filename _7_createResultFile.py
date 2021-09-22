@@ -9,3 +9,14 @@ def createResultFile(limitStress, results):
         file.write('%.1f' % results[j][1] + ', ' + '%.6f' % results[j][2] + '\n')
 
     file.close()
+
+def createEnvelopeCurve(results):
+    file = open('EnvelopeCurve.txt', "a")
+
+    file.write('Envelope Curve\n')
+    file.write('Nrd, Mrd\n' )
+
+    for j in range(len(results)):
+        file.write('%.1f' % results[j][0] + ', ' + '%.6f' % results[j][1] + '\n')
+
+    file.close()

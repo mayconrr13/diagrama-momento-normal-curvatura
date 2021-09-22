@@ -1,5 +1,5 @@
 from _6_resultantMoment import getResultantMoment
-from _7_createResultFile import createResultFile
+from _7_createResultFile import createResultFile, createEnvelopeCurve
 from _3_normalStrainIteractiveProcess import resolver
 
 def getThirdCondition(strain, sectionDepth, radiusOfCurvature): 
@@ -24,15 +24,16 @@ def interactiveProcess(
     processResults = []
 
     effectiveDepth = sectionDepth - reinforcementCenterPosition
-    check = initialStrain
+    strain = initialStrain
     teta = teta
     radiusOfCurvature = teta / (1000 * effectiveDepth)
+    condition = 0
 
-    while (check < 0.0035):
+    while strain <= 0.0035 and condition <= 0.002:
         trackProperties, barProperties, strain = resolver(
             normalForce, 
             maximumError, 
-            check, 
+            strain, 
             radiusOfCurvature, 
             limitStress, 
             sectionWidth, 
@@ -43,19 +44,18 @@ def interactiveProcess(
             reinforcementYieldStress
         )
 
-        check = strain
+        strain = strain
+        condition = getThirdCondition(strain, sectionDepth, radiusOfCurvature) 
+
+        if(strain > 0.0035 or condition > 0.002):
+            break       
 
         resultantMoment = getResultantMoment(trackProperties, barProperties, sectionDepth)
 
         processResults.append([normalForce, teta, resultantMoment])
 
-        condition = getThirdCondition(strain, sectionDepth, radiusOfCurvature)
-        if(condition >= 0.002):
-            break
-        
         teta += 0.1
         radiusOfCurvature = teta / (1000 * effectiveDepth)
-
 
     return processResults
 
@@ -72,6 +72,7 @@ def getResultsPerNormalForceLevel(
 
     limitStress = ['85', '110']
     normalForce = normalForceInitial
+    resistantMoment = []
 
     for i in range(len(limitStress)):
         results = interactiveProcess(
@@ -89,9 +90,17 @@ def getResultsPerNormalForceLevel(
             reinforcementYieldStress
         )
 
+        if(len(results) == 0):
+            print("Força normal de " + str(normalForce) + " fora dos limites!")
+            return False, []
+
         createResultFile(limitStress[i], results)
 
+        if(i == 0):
+            resistantMoment = results[-1]
+            
     print("Processo finalizado para força normal " + str(normalForce) + "!")
+    return True, resistantMoment
 
 def processNormalForceRange(
         sectionWidth, 
@@ -107,9 +116,10 @@ def processNormalForceRange(
     ):
     
     normalForce = normalForceInitial
+    envelopeCurvePoints = []
 
     while (normalForce <= normalForceLimit):
-        getResultsPerNormalForceLevel(
+        hasResults, momentResistant = getResultsPerNormalForceLevel(
             normalForce, 
             sectionDepth, 
             reinforcementCenterPosition, 
@@ -120,7 +130,16 @@ def processNormalForceRange(
             reinforcementYieldStress
         )
 
+        if(hasResults == False):
+            break
+        
+        if(len(momentResistant) > 0):
+            envelopeCurvePoints.append([normalForce, momentResistant[2]])
+
         normalForce += normalForceVariation
 
+    createEnvelopeCurve(envelopeCurvePoints)
+
+    print("Envoltória criada")
     print("--- END ---")
     return

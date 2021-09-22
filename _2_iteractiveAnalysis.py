@@ -2,10 +2,21 @@ from _6_resultantMoment import getResultantMoment
 from _7_createResultFile import createResultFile, createEnvelopeCurve
 from _3_normalStrainIteractiveProcess import resolver
 
-def getThirdCondition(strain, sectionDepth, radiusOfCurvature): 
+def checkSectionDomain(strain, sectionDepth, radiusOfCurvature): 
     condition = strain - radiusOfCurvature * sectionDepth * 0.42867
 
     return condition
+
+def checkBarStrain(barPropertiesList):
+    barStrain = []
+
+    for i in range(len(barPropertiesList)):
+        strain = abs(barPropertiesList[i][2])
+        barStrain.append(strain)
+
+    maximumStrain = max(barStrain)
+
+    return maximumStrain
 
 def interactiveProcess(
     normalForce, 
@@ -24,16 +35,18 @@ def interactiveProcess(
     processResults = []
 
     effectiveDepth = sectionDepth - reinforcementCenterPosition
-    strain = initialStrain
     teta = teta
     radiusOfCurvature = teta / (1000 * effectiveDepth)
-    condition = 0
+    
+    concreteStrain = initialStrain
+    barMaximumStrain = 0
+    fifthDomain = 0
 
-    while strain <= 0.0035 and condition <= 0.002:
+    while concreteStrain <= 0.0035 and barMaximumStrain <= 0.01 and fifthDomain <= 0.002:
         trackProperties, barProperties, strain = resolver(
             normalForce, 
             maximumError, 
-            strain, 
+            concreteStrain, 
             radiusOfCurvature, 
             limitStress, 
             sectionWidth, 
@@ -44,10 +57,11 @@ def interactiveProcess(
             reinforcementYieldStress
         )
 
-        strain = strain
-        condition = getThirdCondition(strain, sectionDepth, radiusOfCurvature) 
+        concreteStrain = strain
+        barMaximumStrain = checkBarStrain(barProperties)
+        fifthDomain = checkSectionDomain(concreteStrain, sectionDepth, radiusOfCurvature) 
 
-        if(strain > 0.0035 or condition > 0.002):
+        if(concreteStrain > 0.0035 or barMaximumStrain > 0.01 or fifthDomain > 0.002):
             break       
 
         resultantMoment = getResultantMoment(trackProperties, barProperties, sectionDepth)
@@ -77,7 +91,7 @@ def getResultsPerNormalForceLevel(
     for i in range(len(limitStress)):
         results = interactiveProcess(
             normalForce, 
-            10 ** -6, 
+            10 ** -8, 
             sectionDepth, 
             reinforcementCenterPosition, 
             0.1, 

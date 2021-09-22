@@ -22,7 +22,7 @@ def getBarProperties(initialStrain, radiusOfCurvature, reinforcementYieldStress,
         barStress = getBarStress(barStrain, reinforcementYieldStress)
         barResultantForce = barStress * (math.pi * 0.25 * (reinforcementBarsList[i][0] / 10) ** 2)
 
-        barProperties.append([barPosition[1], barResultantForce])
+        barProperties.append([barPosition[1], barResultantForce, barStrain])
 
     return barProperties
     

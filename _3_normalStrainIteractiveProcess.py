@@ -2,20 +2,17 @@ from _4_concreteProperties import getConcreteTrackProperties, getConcreteResulta
 from _5_steelProperties import getBarProperties, getSteelResultantForce
 
 def getCorrectionFactor(normalForce):
-    if(normalForce < 300):
-        return 0.01
-    if(normalForce >= 300 and normalForce < 600):
-        return 0.1
-    elif(normalForce >= 600 and normalForce < 800):
-        return 0.2
+    if(normalForce < 1000):
+        return 0.02
+
     else:
-        return 0.5
+        return 0.2
 
 def updateStrain(strain, previousError, normalForce):
     correctionFactor = getCorrectionFactor(normalForce)
 
     updatedStrain = strain * (1 + correctionFactor * previousError / normalForce)
-
+    
     return updatedStrain
 
 def resolver(

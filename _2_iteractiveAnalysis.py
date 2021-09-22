@@ -87,6 +87,8 @@ def getResultsPerNormalForceLevel(
     limitStress = ['85', '110']
     normalForce = normalForceInitial
     resistantMoment = []
+    firstSituationProceed = True
+    secondSituationProceed = True
 
     for i in range(len(limitStress)):
         results = interactiveProcess(
@@ -104,14 +106,23 @@ def getResultsPerNormalForceLevel(
             reinforcementYieldStress
         )
 
-        if(len(results) == 0):
-            print("Força normal de " + str(normalForce) + " fora dos limites!")
+        if(len(results) == 0 and i == 0):
+            print("Força normal de " + str(normalForce) + " fora dos limites (0.85fcd)!")
+            firstSituationProceed = False
+
+        elif(len(results) == 0 and i == 1):
+            print("Força normal de " + str(normalForce) + " fora dos limites (1.10fcd)!")
+            secondSituationProceed = False
+        
+        else:
+            createResultFile(limitStress[i], results)
+
+            if(i == 0):
+                resistantMoment = results[-1]
+
+        if(firstSituationProceed == False and secondSituationProceed == False):
+            print("Processo interrompido por se encontrar fora de ambos limites")
             return False, []
-
-        createResultFile(limitStress[i], results)
-
-        if(i == 0):
-            resistantMoment = results[-1]
             
     print("Processo finalizado para força normal " + str(normalForce) + "!")
     return True, resistantMoment
